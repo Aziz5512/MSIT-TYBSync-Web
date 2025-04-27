@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Profile - TYBSync</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 2rem;
+        }
+        .form-container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        input, textarea, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 1rem;
+            padding: 0.7rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .photo-preview {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .skill-tag {
+            background:#007bff;
+            color:white;
+            padding:5px 10px;
+            border-radius:15px;
+            margin:5px;
+            display:inline-block;
+        }
+        button.save-profile {
+    background: #28a745; /* Green */
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+button.save-profile:hover {
+    background: #218838; /* Darker green */
+}
+
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Create Your Profile</h2>
+
+    <input type="text" id="name" placeholder="Your Name" required>
+    <textarea id="bio" placeholder="Short Bio" rows="3" required></textarea>
+    <input type="text" id="location" placeholder="Your Location" required>
+
+    <input type="file" id="photoInput" accept="image/*">
+    <img id="photoPreview" class="photo-preview" src="" alt="Photo Preview" style="display:none;">
+
+    <h4>Skills Offered:</h4>
+    <input type="text" id="offeredSkill" placeholder="Add Skill">
+    <button onclick="addSkill('offered')">Add Offered Skill</button>
+    <div id="offeredSkillsList"></div>
+
+    <h4>Skills Wanted:</h4>
+    <input type="text" id="wantedSkill" placeholder="Add Skill">
+    <button onclick="addSkill('wanted')">Add Wanted Skill</button>
+    <div id="wantedSkillsList"></div>
+
+    <button class="save-profile" onclick="saveProfile()">Save Profile</button>
+    <button style="background-color: gray;" onclick="goToProfiles()">View All Profiles</button>
+</div>
+
+<script>
+    let profile = {
+        photo: "",
+        skillsOffered: [],
+        skillsWanted: []
+    };
+
+    // Listen to photo file input
+    document.getElementById('photoInput').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                profile.photo = e.target.result; // Save Base64 string
+                const photoPreview = document.getElementById('photoPreview');
+                photoPreview.src = profile.photo;
+                photoPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function addSkill(type) {
+    const input = document.getElementById(type === 'offered' ? 'offeredSkill' : 'wantedSkill');
+    const skill = input.value.trim();
+    if (skill) {
+        if (type === 'offered') {
+            profile.skillsOffered.push(skill);
+            updateSkillsList('offeredSkillsList', profile.skillsOffered);
+        } else {
+            profile.skillsWanted.push(skill);
+            updateSkillsList('wantedSkillsList', profile.skillsWanted);
+        }
+        input.value = "";  // Clear the input field after adding
+    }
+}
+
+
+    function updateSkillsList(divId, skills) {
+        const container = document.getElementById(divId);
+        container.innerHTML = skills.map(skill => 
+            `<span class="skill-tag">${skill}</span>`
+        ).join('');
+    }
+
+    function saveProfile() {
+    const name = document.getElementById('name').value.trim();
+    const bio = document.getElementById('bio').value.trim();
+    const location = document.getElementById('location').value.trim();
+
+    if (!name || !bio || !location) {
+        alert("Please fill out all fields.");
+        return;
+    }
+
+    const updatedProfile = {
+        name,
+        bio,
+        location,
+        photo: profile.photo, // Save the Base64 image string
+        skillsOffered: [...profile.skillsOffered],
+        skillsWanted: [...profile.skillsWanted]
+    };
+
+    let profiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
+
+    // Check if profile exists (editing scenario)
+    const existingProfileIndex = profiles.findIndex(p => p.name === updatedProfile.name);
+    if (existingProfileIndex !== -1) {
+        profiles[existingProfileIndex] = updatedProfile;
+    } else {
+        profiles.push(updatedProfile);
+    }
+
+    localStorage.setItem('userProfiles', JSON.stringify(profiles));
+    localStorage.setItem('selectedProfileName', updatedProfile.name);
+
+    alert("Profile saved successfully!");
+    window.location.href = 'profile-view.html'; // Redirect after saving
+}
+window.onload = function() {
+    const profiles = JSON.parse(localStorage.getItem('userProfiles')) || [];
+    const selectedName = localStorage.getItem('selectedProfileName');
+
+    if (!selectedName) {
+        alert("No profile selected. Redirecting...");
+        window.location.href = 'profiles-list.html';
+    }
+
+    const profile = profiles.find(p => p.name === selectedName);
+
+    if (!profile) {
+        alert("Profile not found. Redirecting...");
+        window.location.href = 'profiles-list.html';
+    }
+
+    document.getElementById('name').textContent = profile.name;
+    document.getElementById('bio').textContent = profile.bio;
+    document.getElementById('location').textContent = profile.location;
+    document.getElementById('photo').src = profile.photo || "https://via.placeholder.com/150"; // Display the saved image
+
+    // Load skills offered
+    profile.skillsOffered.forEach(skill => {
+        const skillTag = document.createElement('div');
+        skillTag.className = "skill-item";
+        skillTag.textContent = skill;
+        document.getElementById('skillsOffered').appendChild(skillTag);
+    });
+
+    // Load skills wanted
+    profile.skillsWanted.forEach(skill => {
+        const skillTag = document.createElement('div');
+        skillTag.className = "skill-item";
+        skillTag.textContent = skill;
+        document.getElementById('skillsWanted').appendChild(skillTag);
+    });
+};
+// Listen to photo file input for editing the profile
+document.getElementById('photoInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profile.photo = e.target.result; // Save new Base64 string
+            const photoPreview = document.getElementById('photoPreview');
+            photoPreview.src = profile.photo; // Update the preview
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+window.onload = function() {
+    const profileToEdit = JSON.parse(localStorage.getItem('profileToEdit'));
+
+    if (profileToEdit) {
+        document.getElementById('name').value = profileToEdit.name;
+        document.getElementById('bio').value = profileToEdit.bio;
+        document.getElementById('location').value = profileToEdit.location;
+        document.getElementById('photoPreview').src = profileToEdit.photo || "https://via.placeholder.com/150";
+        
+        // Load skills offered
+        profileToEdit.skillsOffered.forEach(skill => {
+            const skillTag = document.createElement('div');
+            skillTag.className = "skill-item";
+            skillTag.textContent = skill;
+            document.getElementById('skillsOffered').appendChild(skillTag);
+        });
+
+        // Load skills wanted
+        profileToEdit.skillsWanted.forEach(skill => {
+            const skillTag = document.createElement('div');
+            skillTag.className = "skill-item";
+            skillTag.textContent = skill;
+            document.getElementById('skillsWanted').appendChild(skillTag);
+        });
+
+        profile = profileToEdit;  // Set profile object to be used in saving
+    }
+};
+// Listen to photo file input
+document.getElementById('photoInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profile.photo = e.target.result; // Save Base64 string
+            const photoPreview = document.getElementById('photoPreview');
+            photoPreview.src = profile.photo; // Show the preview
+            photoPreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+function goToProfiles() {
+        window.location.href = 'profiles-list.html';
+    }
+</script>
+
+</body>
+</html>
